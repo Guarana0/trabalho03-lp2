@@ -19,6 +19,7 @@ abstract class State {
 
 class Procurando extends State {
     private final String roboAlisson = "MeuRobo.alisson";
+    private boolean achouAlisson = false;
 
     public Procurando(RoboTeste robo) {
         super(robo);
@@ -26,14 +27,59 @@ class Procurando extends State {
 
     @Override
     public void run() {
+
         robo.setTurnRadarLeft(360);
     }
 
     public boolean encontrouRoboAlvo(ScannedRobotEvent e) {
         if (!e.getName().contains(roboAlisson)) {
             return false;
+        } else {
+            achouAlisson = true;
+            return true;
         }
-        return true;
+    }
+
+}
+
+class Patrulhando extends State {
+    private boolean girandoNaBorda = false;
+    private int ladosPercorridos = 0;
+
+    public Patrulhando(RoboTeste robo) {
+        super(robo);
+    }
+
+    @Override
+    public void run() {
+        // aqui agente confere se o robonao ta fazendo nada
+        if (robo.getDistanceRemaining() == 0 && robo.getTurnRemaining() == 0) {
+            // conferimos quantos lados ele percorreu
+            if (ladosPercorridos >= 5) {
+                if (!girandoNaBorda) {
+                    robo.setTurnRight(135);
+                    girandoNaBorda = true;
+                } else {
+                    double xCentro = robo.getBattleFieldHeight() / 2;
+                    double yCentro = robo.getBattleFieldWidth() / 2;
+                    double distanciaCentro = Math.max(xCentro, yCentro);
+
+                    robo.setAhead(distanciaCentro);
+                    mudarEstado(new Procurando(robo));
+                }
+                return;
+            }
+
+            if (!girandoNaBorda) {
+                robo.setTurnRight(90);
+                girandoNaBorda = true;
+            } else {
+                double tamanhoTrecho = Math.max(robo.getBattleFieldWidth(), robo.getBattleFieldHeight());
+                robo.setAhead(tamanhoTrecho);
+                girandoNaBorda = false;
+                ladosPercorridos++;
+            }
+        }
     }
 }
 
@@ -56,7 +102,7 @@ class SaindoZona extends State {
     @Override
     public void run() {
         if (robo.getDistanceRemaining() == 0) {
-            mudarEstado(new Finalizado(robo));
+            mudarEstado(new Patrulhando(robo));
         }
     }
 }
@@ -75,7 +121,6 @@ class IndoParede extends State {
     public void run() {
         if (robo.getDistanceRemaining() == 0) {
             mudarEstado(new SaindoZona(robo));
-            robo.setBack(distanciaVolta);
         }
     }
 }
