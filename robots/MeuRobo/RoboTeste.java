@@ -1,14 +1,24 @@
-package teste;
+package MeuRobo;
 
 import robocode.*;
 import java.awt.Color;
 
+abstract class State {
+    protected RoboTeste robo;
+
+    public State(RoboTeste robo) {
+        this.robo = robo;
+    }
+}
+
 public class RoboTeste extends AdvancedRobot {
-    private enum Estado { PROCURANDO, INDO_PAREDE, SAINDO_ZONA, FINALIZADO }
-    
+    private enum Estado {
+        PROCURANDO, INDO_PAREDE, SAINDO_ZONA, FINALIZADO
+    }
+
     private Estado estadoAtual = Estado.PROCURANDO;
     private double distanciaVolta = 0;
-    private final String alissonName = "sample.Target"; // por enquanto
+    private final String roboAlisson = "MeuRobo.alisson"; // robo do alisson
 
     @Override
     public void run() {
@@ -20,20 +30,20 @@ public class RoboTeste extends AdvancedRobot {
                 case PROCURANDO:
                     setTurnRadarRight(360);
                     break;
-                    
+
                 case INDO_PAREDE:
                     if (getDistanceRemaining() == 0) {
                         estadoAtual = Estado.SAINDO_ZONA;
                         setBack(distanciaVolta);
                     }
                     break;
-                    
+
                 case SAINDO_ZONA:
                     if (getDistanceRemaining() == 0) {
                         estadoAtual = Estado.FINALIZADO;
                     }
                     break;
-                    
+
                 case FINALIZADO:
                     break;
             }
@@ -43,7 +53,7 @@ public class RoboTeste extends AdvancedRobot {
 
     @Override
     public void onScannedRobot(ScannedRobotEvent e) {
-        if (estadoAtual != Estado.PROCURANDO || !e.getName().contains(alissonName)) {
+        if (estadoAtual != Estado.PROCURANDO || !e.getName().contains(roboAlisson)) {
             return;
         }
 
@@ -62,17 +72,21 @@ public class RoboTeste extends AdvancedRobot {
         double margemParede = (getWidth() / 2.0) + 3;
         double margemSegura = getSentryBorderSize() + 20;
 
-        if (menor == distCima) virarPara(0);
-        else if (menor == distDir) virarPara(90);
-        else if (menor == distBaixo) virarPara(180);
-        else virarPara(270);
+        if (menor == distCima)
+            virarPara(0);
+        else if (menor == distDir)
+            virarPara(90);
+        else if (menor == distBaixo)
+            virarPara(180);
+        else
+            virarPara(270);
 
         double distanciaAndar = menor - margemParede;
         distanciaVolta = margemSegura - margemParede;
 
         if (distanciaAndar > 0) {
             setAhead(distanciaAndar);
-            estadoAtual = Estado.INDO_PAREDE; 
+            estadoAtual = Estado.INDO_PAREDE;
         } else {
             setBack(distanciaVolta);
             estadoAtual = Estado.SAINDO_ZONA;
@@ -82,10 +96,10 @@ public class RoboTeste extends AdvancedRobot {
     @Override
     public void onHitRobot(HitRobotEvent e) {
         if (estadoAtual == Estado.INDO_PAREDE) {
-            setAhead(0); 
-            estadoAtual = Estado.SAINDO_ZONA; 
-            
-            setBack(distanciaVolta + 40); 
+            setAhead(0);
+            estadoAtual = Estado.SAINDO_ZONA;
+
+            setBack(distanciaVolta + 40);
         }
     }
 
@@ -96,13 +110,18 @@ public class RoboTeste extends AdvancedRobot {
 
     private double normalizeBearing(double angle) {
         angle = angle % 360;
-        if (angle > 180) angle -= 360;
-        if (angle < -180) angle += 360;
+        if (angle > 180)
+            angle -= 360;
+        if (angle < -180)
+            angle += 360;
         return angle;
     }
 
     @Override
-    public void onHitWall(HitWallEvent e) {}
+    public void onHitWall(HitWallEvent e) {
+    }
+
     @Override
-    public void onHitByBullet(HitByBulletEvent e) {}
+    public void onHitByBullet(HitByBulletEvent e) {
+    }
 }
