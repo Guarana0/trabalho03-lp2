@@ -9,16 +9,85 @@ abstract class State {
     public State(RoboTeste robo) {
         this.robo = robo;
     }
+
+    public abstract void run();
+
+    protected void mudarEstado(State estado) {
+        robo.mudarEstado(estado);
+    }
+}
+
+class Procurando extends State {
+    private final String roboAlisson = "MeuRobo.alisson";
+
+    public Procurando(RoboTeste robo) {
+        super(robo);
+    }
+
+    @Override
+    public void run() {
+        robo.setTurnRadarLeft(360);
+    }
+
+    public boolean encontrouRoboAlvo(ScannedRobotEvent e) {
+        if (!e.getName().contains(roboAlisson)) {
+            return false;
+        }
+        return true;
+    }
+}
+
+class Finalizado extends State {
+    public Finalizado(RoboTeste robo) {
+        super(robo);
+    }
+
+    @Override
+    public void run() {
+        return;
+    }
+}
+
+class SaindoZona extends State {
+    public SaindoZona(RoboTeste robo) {
+        super(robo);
+    }
+
+    @Override
+    public void run() {
+        if (robo.getDistanceRemaining() == 0) {
+            mudarEstado(new Finalizado(robo));
+        }
+    }
+}
+
+class IndoParede extends State {
+    private final double distanciaVolta;
+
+    public IndoParede(RoboTeste robo) {
+        super(robo);
+        double margemParede = (robo.getWidth() / 2.0) + 3;
+        double margemSegura = robo.getSentryBorderSize() + 20;
+        distanciaVolta = margemSegura - margemParede;
+    }
+
+    @Override
+    public void run() {
+        if (robo.getDistanceRemaining() == 0) {
+            mudarEstado(new SaindoZona(robo));
+            robo.setBack(distanciaVolta);
+        }
+    }
 }
 
 public class RoboTeste extends AdvancedRobot {
-    private enum Estado {
-        PROCURANDO, INDO_PAREDE, SAINDO_ZONA, FINALIZADO
-    }
+    private final Procurando procurando = new Procurando(this);
+    private State estadoAtual = procurando;
+    private double distanciaVolta;
 
-    private Estado estadoAtual = Estado.PROCURANDO;
-    private double distanciaVolta = 0;
-    private final String roboAlisson = "MeuRobo.alisson"; // robo do alisson
+    void mudarEstado(State estado) {
+        estadoAtual = estado;
+    }
 
     @Override
     public void run() {
@@ -26,34 +95,14 @@ public class RoboTeste extends AdvancedRobot {
         setAdjustRadarForGunTurn(true);
 
         while (true) {
-            switch (estadoAtual) {
-                case PROCURANDO:
-                    setTurnRadarRight(360);
-                    break;
-
-                case INDO_PAREDE:
-                    if (getDistanceRemaining() == 0) {
-                        estadoAtual = Estado.SAINDO_ZONA;
-                        setBack(distanciaVolta);
-                    }
-                    break;
-
-                case SAINDO_ZONA:
-                    if (getDistanceRemaining() == 0) {
-                        estadoAtual = Estado.FINALIZADO;
-                    }
-                    break;
-
-                case FINALIZADO:
-                    break;
-            }
+            estadoAtual.run();
             execute();
         }
     }
 
     @Override
     public void onScannedRobot(ScannedRobotEvent e) {
-        if (estadoAtual != Estado.PROCURANDO || !e.getName().contains(roboAlisson)) {
+        if (!(estadoAtual instanceof Procurando) || !procurando.encontrouRoboAlvo(e)) {
             return;
         }
 
@@ -86,18 +135,18 @@ public class RoboTeste extends AdvancedRobot {
 
         if (distanciaAndar > 0) {
             setAhead(distanciaAndar);
-            estadoAtual = Estado.INDO_PAREDE;
+            estadoAtual = new IndoParede(this);
         } else {
             setBack(distanciaVolta);
-            estadoAtual = Estado.SAINDO_ZONA;
+            estadoAtual = new SaindoZona(this);
         }
     }
 
     @Override
     public void onHitRobot(HitRobotEvent e) {
-        if (estadoAtual == Estado.INDO_PAREDE) {
+        if (estadoAtual instanceof IndoParede) {
             setAhead(0);
-            estadoAtual = Estado.SAINDO_ZONA;
+            estadoAtual = new SaindoZona(this);
 
             setBack(distanciaVolta + 40);
         }
