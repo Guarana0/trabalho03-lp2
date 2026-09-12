@@ -182,6 +182,7 @@ public class RoboTeste extends AdvancedRobot {
     private final Procurando procurando = new Procurando(this);
     private State estadoAtual = new SaindoZona(this);
     private double distanciaVolta;
+    private double distanciaRobo;
     private boolean centroAlcancado;
 
     void mudarEstado(State estado) {
@@ -208,6 +209,8 @@ public class RoboTeste extends AdvancedRobot {
         if (!procurando.encontrouRoboAlvo(e)) {
             return;
         }
+
+        distanciaRobo = e.getDistance();
 
         if (estadoAtual instanceof Atacando) {
             ((Atacando) estadoAtual).atualizarAlvo(e.getBearing());
@@ -261,13 +264,14 @@ public class RoboTeste extends AdvancedRobot {
     }
 
     @Override
-    public void onHitRobot(HitRobotEvent e) { /* 
-        if (estadoAtual instanceof IndoParede) {
-            setAhead(0);
-            estadoAtual = new SaindoZona(this);
+    public void onHitRobot(HitRobotEvent e) { 
+        if (!centroAlcancado) {
+            return;
+        } else {
+            setBack(distanciaRobo + 30);
+            mudarEstado(new Atacando(this, e.getBearing()));
+        }
 
-            setBack(distanciaVolta + 40);
-        } */
     }
 
     void virarPara(double anguloAbsoluto) {
