@@ -45,41 +45,69 @@ class Procurando extends State {
 class Patrulhando extends State {
     private boolean girandoNaBorda = false;
     private int ladosPercorridos = 0;
+    private boolean indoParaCentro = false;
+    private final double xMin, xMax, yMin, yMax;
 
     public Patrulhando(RoboTeste robo) {
         super(robo);
+        int margem = robo.getSentryBorderSize() + (int) (robo.getWidth() / 2.0) + 3;
+        xMin = margem;
+        xMax = robo.getBattleFieldWidth() - margem;
+        yMin = margem;
+        yMax = robo.getBattleFieldHeight() - margem;
     }
 
     @Override
     public void run() {
-        // aqui agente confere se o robonao ta fazendo nada
-        if (robo.getDistanceRemaining() == 0 && robo.getTurnRemaining() == 0) {
-            // conferimos quantos lados ele percorreu
-            if (ladosPercorridos >= 5) {
-                if (!girandoNaBorda) {
-                    robo.setTurnRight(135);
-                    girandoNaBorda = true;
-                } else {
-                    double xCentro = robo.getBattleFieldHeight() / 2;
-                    double yCentro = robo.getBattleFieldWidth() / 2;
-                    double distanciaCentro = Math.max(xCentro, yCentro);
-
-                    robo.setAhead(distanciaCentro);
-                    mudarEstado(new Procurando(robo));
-                }
-                return;
-            }
-
-            if (!girandoNaBorda) {
-                robo.setTurnRight(90);
-                girandoNaBorda = true;
-            } else {
-                double tamanhoTrecho = Math.max(robo.getBattleFieldWidth(), robo.getBattleFieldHeight());
-                robo.setAhead(tamanhoTrecho);
-                girandoNaBorda = false;
-                ladosPercorridos++;
-            }
+        if (robo.getDistanceRemaining() != 0 || robo.getTurnRemaining() != 0) {
+            return; // ainda terminando o movimento anterior
         }
+
+        if (indoParaCentro) {
+            mudarEstado(new Procurando(robo));
+            return;
+        }
+
+        if (ladosPercorridos >= 5) {
+            irParaCentro();
+            return;
+        }
+
+        if (!girandoNaBorda) {
+            robo.setTurnRight(90);
+            girandoNaBorda = true;
+        } else {
+            double lado = distanciaAteLimite();     
+            robo.setAhead(lado);
+            girandoNaBorda = false;
+            ladosPercorridos++;
+        }
+    }
+
+    private double distanciaAteLimite() {
+        double heading = robo.getHeading();
+        int quadrante = (int) Math.round(heading / 90.0) % 4;
+
+        switch (quadrante) {
+            case 0: return yMax - robo.getY();
+            case 1: return xMax - robo.getX();
+            case 2: return robo.getY() - yMin;
+            default: return robo.getX() - xMin;
+        }
+    }
+
+    private void irParaCentro() {
+        double xCentro = robo.getBattleFieldWidth() / 2;
+        double yCentro = robo.getBattleFieldHeight() / 2;
+        double dx = xCentro - robo.getX();
+        double dy = yCentro - robo.getY();
+        double distanciaCentro = Math.hypot(dx, dy);
+
+        double anguloCentro = Math.toDegrees(Math.atan2(dx, dy));
+        robo.virarPara(anguloCentro);
+        robo.setAhead(distanciaCentro);
+
+        indoParaCentro = true; // só troca de estado quando esse movimento terminar
     }
 }
 
@@ -102,6 +130,7 @@ class SaindoZona extends State {
     @Override
     public void run() {
         if (robo.getDistanceRemaining() == 0) {
+            robo.back(robo.getSentryBorderSize()); //aqui ele sai da SentryZone
             mudarEstado(new Patrulhando(robo));
         }
     }
@@ -136,7 +165,7 @@ public class RoboTeste extends AdvancedRobot {
 
     @Override
     public void run() {
-        setColors(Color.black, Color.red, Color.black);
+        setColors(Color.black, Color.white, Color.black);
         setAdjustRadarForGunTurn(true);
 
         while (true) {
@@ -146,7 +175,7 @@ public class RoboTeste extends AdvancedRobot {
     }
 
     @Override
-    public void onScannedRobot(ScannedRobotEvent e) {
+    public void onScannedRobot(ScannedRobotEvent e) { 
         if (!(estadoAtual instanceof Procurando) || !procurando.encontrouRoboAlvo(e)) {
             return;
         }
@@ -164,7 +193,8 @@ public class RoboTeste extends AdvancedRobot {
         double menor = Math.min(Math.min(distCima, distBaixo), Math.min(distEsq, distDir));
 
         double margemParede = (getWidth() / 2.0) + 3;
-        double margemSegura = getSentryBorderSize() + 20;
+        //para que o robo fique na zona segura
+        double margem = getSentryBorderSize();
 
         if (menor == distCima)
             virarPara(0);
@@ -176,7 +206,7 @@ public class RoboTeste extends AdvancedRobot {
             virarPara(270);
 
         double distanciaAndar = menor - margemParede;
-        distanciaVolta = margemSegura - margemParede;
+        distanciaVolta = margem;
 
         if (distanciaAndar > 0) {
             setAhead(distanciaAndar);
@@ -184,20 +214,20 @@ public class RoboTeste extends AdvancedRobot {
         } else {
             setBack(distanciaVolta);
             estadoAtual = new SaindoZona(this);
-        }
+        } 
     }
 
     @Override
-    public void onHitRobot(HitRobotEvent e) {
+    public void onHitRobot(HitRobotEvent e) { /* 
         if (estadoAtual instanceof IndoParede) {
             setAhead(0);
             estadoAtual = new SaindoZona(this);
 
             setBack(distanciaVolta + 40);
-        }
+        } */
     }
 
-    private void virarPara(double anguloAbsoluto) {
+    void virarPara(double anguloAbsoluto) {
         double anguloVirar = normalizeBearing(anguloAbsoluto - getHeading());
         turnRight(anguloVirar);
     }
