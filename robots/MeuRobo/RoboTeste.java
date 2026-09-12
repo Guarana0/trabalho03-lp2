@@ -64,11 +64,12 @@ class Patrulhando extends State {
         }
 
         if (indoParaCentro) {
+            robo.marcarCentroAlcancado();
             mudarEstado(new Procurando(robo));
             return;
         }
 
-        if (ladosPercorridos >= 5) {
+        if (ladosPercorridos >= 4) {
             irParaCentro();
             return;
         }
@@ -154,13 +155,41 @@ class IndoParede extends State {
     }
 }
 
+class Atacando extends State {
+    private double bearingAlvo;
+
+    public Atacando(RoboTeste robo, double bearingAlvo) {
+        super(robo);
+        this.bearingAlvo = bearingAlvo;
+    }
+
+    public void atualizarAlvo(double bearingAlvo) {
+        this.bearingAlvo = bearingAlvo;
+    }
+
+    @Override
+    public void run() {
+        robo.setTurnRadarLeft(360);
+
+        double giroCanhao = robo.getHeading() + bearingAlvo - robo.getGunHeading();
+        robo.setTurnGunRight(giroCanhao);
+        robo.setFire(1);
+    }
+
+}
+
 public class RoboTeste extends AdvancedRobot {
     private final Procurando procurando = new Procurando(this);
-    private State estadoAtual = procurando;
+    private State estadoAtual = new SaindoZona(this);
     private double distanciaVolta;
+    private boolean centroAlcancado;
 
     void mudarEstado(State estado) {
         estadoAtual = estado;
+    }
+
+    void marcarCentroAlcancado() {
+        centroAlcancado = true;
     }
 
     @Override
@@ -176,7 +205,21 @@ public class RoboTeste extends AdvancedRobot {
 
     @Override
     public void onScannedRobot(ScannedRobotEvent e) { 
-        if (!(estadoAtual instanceof Procurando) || !procurando.encontrouRoboAlvo(e)) {
+        if (!procurando.encontrouRoboAlvo(e)) {
+            return;
+        }
+
+        if (estadoAtual instanceof Atacando) {
+            ((Atacando) estadoAtual).atualizarAlvo(e.getBearing());
+            return;
+        }
+
+        if (!(estadoAtual instanceof Procurando)) {
+            return;
+        }
+
+        if (centroAlcancado) {
+            estadoAtual = new Atacando(this, e.getBearing());
             return;
         }
 
