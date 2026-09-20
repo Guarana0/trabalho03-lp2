@@ -32,7 +32,8 @@ class Procurando extends State {
     }
 
     public boolean encontrouRoboAlvo(ScannedRobotEvent e) {
-        if (!e.getName().contains(roboAlisson)) {
+        String nome = e.getName().toLowerCase();
+        if (!nome.contains("alisson")) {
             return false;
         } else {
             achouAlisson = true;
@@ -173,7 +174,10 @@ class Atacando extends State {
 
         double giroCanhao = robo.getHeading() + bearingAlvo - robo.getGunHeading();
         robo.setTurnGunRight(giroCanhao);
-        robo.setFire(1);
+
+        if (Math.abs(giroCanhao) < 3) {
+            robo.setFire(2);
+        }
     }
 
 }
@@ -218,7 +222,7 @@ public class RoboTeste extends AdvancedRobot {
             return;
         }
 
-        if (centroAlcancado) {
+        if (centroAlcancado || procurando.encontrouRoboAlvo(e)) {
             estadoAtual = new Atacando(this, e.getBearing());
             return;
         }
