@@ -178,28 +178,96 @@ class Atacando extends State {
 
 }
 
+abstract class State {
+    protected RoboTeste robo;
+
+    public State(RoboTeste robo) {
+        this.robo = robo;
+    }
+
+    public abstract void run();
+
+    protected void mudarEstado(State estado) {
+        robo.mudarEstado(estado);
+    }
+}
+
+class Procurando extends State {
+    public Procurando(RoboTeste robo) {
+        super(robo);
+    }
+
+    @Override
+    public void run() {
+        robo.setTurnRadarLeft(360);
+    }
+
+    public boolean encontrouRoboAlvo(ScannedRobotEvent e) {
+        return e.getName().toLowerCase().contains("alisson");
+    }
+}
+
 public class RoboTeste extends AdvancedRobot {
     private final Procurando procurando = new Procurando(this);
+<<<<<<< Updated upstream
     private State estadoAtual = new SaindoZona(this);
     private double distanciaVolta;
     private double distanciaRobo;
     private boolean centroAlcancado;
+=======
+    private State estadoAtual = procurando;
+    private int modo;
+    private boolean centro, girar = true, recuar;
+    private int lados;
+    private double alvo, volta, xmin, xmax, ymin, ymax;
+>>>>>>> Stashed changes
 
     void mudarEstado(State estado) {
         estadoAtual = estado;
     }
 
+<<<<<<< Updated upstream
     void marcarCentroAlcancado() {
         centroAlcancado = true;
     }
 
     @Override
+=======
+>>>>>>> Stashed changes
     public void run() {
         setColors(Color.black, Color.white, Color.black);
         setAdjustRadarForGunTurn(true);
+<<<<<<< Updated upstream
 
         while (true) {
             estadoAtual.run();
+=======
+        setAdjustGunForRobotTurn(true);
+        while (true) {
+            if (modo == 0) {
+                procurando.run();
+            } else if (modo == 1) {
+                if (getDistanceRemaining() == 0) modo = 2;
+            } else if (modo == 2) {
+                if (getDistanceRemaining() == 0) {
+                    if (!recuar) {
+                        setBack(volta);
+                        recuar = true;
+                    } else {
+                        iniciarPatrulha();
+                    }
+                }
+            } else if (modo == 3) {
+                patrulhar();
+            } else if (modo == 5) {
+                if (getDistanceRemaining() == 0 && getTurnRemaining() == 0) {
+                    centro = true;
+                    modo = 0;
+                }
+            } else {
+                atacar();
+            }
+>>>>>>> Stashed changes
             execute();
         }
     }
