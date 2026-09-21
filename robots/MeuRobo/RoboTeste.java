@@ -67,7 +67,7 @@ class Patrulhando extends State {
 
         double lado = distanciaAteLimite();
         if (lado > 1) {
-            robo.setAhead(lado);
+            robo.setAhead(lado); // se colidiu no meio, recalcula e continua reto
             return;
         }
 
