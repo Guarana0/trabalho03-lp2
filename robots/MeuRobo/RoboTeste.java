@@ -1,7 +1,7 @@
 package MeuRobo;
 
 import robocode.*;
-import java.awt.Color;
+import robocode.util.Utils;
 
 abstract class State {
     protected RoboTeste robo;
@@ -119,6 +119,33 @@ class SaindoZona extends State {
     }
 }
 
+class Atacando extends State {
+    double bearingAlvo;
+
+    public Atacando(RoboTeste robo, double bearingAlvo) {
+        super(robo);
+        this.bearingAlvo = bearingAlvo;
+    }
+
+    @Override
+    public void run() {
+        robo.setTurnRadarRight(2 * Utils.normalRelativeAngleDegrees(bearingAlvo - robo.getRadarHeading()));
+        double dx = robo.getBattleFieldWidth() / 2 - robo.getX();
+        double dy = robo.getBattleFieldHeight() / 2 - robo.getY();
+
+        if (Math.hypot(dx, dy) > robo.getBattleFieldHeight() / 2 - robo.getSentryBorderSize() - 60) {
+            robo.setTurnRight(Utils.normalRelativeAngleDegrees(Math.toDegrees(Math.atan2(dx, dy)) - robo.getHeading()));
+            robo.setAhead(99);
+        } else {
+            robo.setAhead(Math.sin(robo.getTime() / 15.0) * 40);
+            robo.setTurnRight(Utils.normalRelativeAngleDegrees(bearingAlvo - robo.getHeading() + 90));
+        }
+
+        robo.setTurnGunRight(Utils.normalRelativeAngleDegrees(bearingAlvo - robo.getGunHeading()));
+        robo.setFire(1);
+    }
+}
+
 public class RoboTeste extends AdvancedRobot {
     private final Procurando procurando = new Procurando(this);
     private State estadoAtual = procurando;
@@ -135,7 +162,6 @@ public class RoboTeste extends AdvancedRobot {
 
     @Override
     public void run() {
-        setColors(Color.black, Color.white, Color.black);
         setAdjustRadarForGunTurn(true);
         setAdjustGunForRobotTurn(true);
 
@@ -151,12 +177,17 @@ public class RoboTeste extends AdvancedRobot {
             return;
         }
 
+        if (estadoAtual instanceof Atacando) {
+            ((Atacando) estadoAtual).bearingAlvo = e.getBearing() + getHeading();
+            return;
+        }
+
         if (!(estadoAtual instanceof Procurando)) {
             return;
         }
 
         if (centroAlcancado) {
-            estadoAtual = new Patrulhando(this);
+            estadoAtual = new Atacando(this, e.getBearing() + getHeading());
             return;
         }
 
@@ -172,15 +203,14 @@ public class RoboTeste extends AdvancedRobot {
 
         double menor = Math.min(Math.min(distCima, distBaixo), Math.min(distEsq, distDir));
 
-        if (menor == distCima) {
+        if (menor == distCima)
             virarPara(0);
-        } else if (menor == distDir) {
+        else if (menor == distDir)
             virarPara(90);
-        } else if (menor == distBaixo) {
+        else if (menor == distBaixo)
             virarPara(180);
-        } else {
+        else
             virarPara(270);
-        }
 
         double distanciaAndar = menor - 21;
         if (distanciaAndar > 0) {
@@ -188,7 +218,6 @@ public class RoboTeste extends AdvancedRobot {
         } else {
             setBack(getSentryBorderSize());
         }
-
         estadoAtual = new SaindoZona(this);
     }
 
@@ -201,13 +230,6 @@ public class RoboTeste extends AdvancedRobot {
     }
 
     void virarPara(double anguloAbsoluto) {
-        turnRight(normalizeBearing(anguloAbsoluto - getHeading()));
-    }
-
-    private double normalizeBearing(double angle) {
-        angle %= 360;
-        if (angle > 180) angle -= 360;
-        if (angle < -180) angle += 360;
-        return angle;
+        turnRight(Utils.normalRelativeAngleDegrees(anguloAbsoluto - getHeading()));
     }
 }
